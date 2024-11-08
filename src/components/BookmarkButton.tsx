@@ -1,34 +1,53 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { useDispatch, useSelector } from "react-redux";
-import { addBookmark, removeBookmark } from "../store/bookmarkSlice";
-import { RootState } from "../store";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface BookmarkButtonProps {
   image: any;
 }
 
 const BookmarkButton: React.FC<BookmarkButtonProps> = ({ image }) => {
-    const dispatch = useDispatch();
-    const bookmarks = useSelector((state: RootState) => state.bookmark.bookmarks);
-    
-    const isBookmarked = bookmarks.some((item) => item.id === image.id)
+    const [bookmarks, setBookmarks] = useState<any[]>([]);
 
-    const toogleBookmark = () => {
-      if (isBookmarked) {
-        dispatch(removeBookmark(image));
-      } else {
-        dispatch(addBookmark(image));
-      }
+    useEffect(() => {
+        const loadBookmarks = async () => {
+            try {
+                const storedBookmarks = await AsyncStorage.getItem('bookmarks');
+                if (storedBookmarks) {
+                    setBookmarks(JSON.parse(storedBookmarks));
+                }
+            } catch (error) {
+                console.error('Error loading bookmarks', error);
+            }
+        };
+        loadBookmarks();
+    }, []);
+
+    const isBookmarked = bookmarks.some((item) => item.id === image.id);
+
+    const toggleBookmark = async () => {
+        let updatedBookmarks = [...bookmarks];
+        
+        if (isBookmarked) {
+            updatedBookmarks = updatedBookmarks.filter(item => item.id !== image.id);
+        } else {
+            updatedBookmarks.push(image);
+        }
+        try {
+            await AsyncStorage.setItem('bookmarks', JSON.stringify(updatedBookmarks));
+            setBookmarks(updatedBookmarks);
+        } catch (error) {
+            console.error('Error saving bookmark', error);
+        }
     };
 
     return (
-        <TouchableOpacity onPress={toogleBookmark} style={styles.bookmarkButton}>
+        <TouchableOpacity onPress={toggleBookmark} style={styles.bookmarkButton}>
             <Icon
-              name= {isBookmarked ? 'bookmark' : 'bookmark-o'}
-              size= {24}
-              color= {isBookmarked? '#3E4685' : '#ccc'}
+              name={isBookmarked ? 'bookmark' : 'bookmark-o'}
+              size={24}
+              color={isBookmarked ? '#3E4685' : '#ccc'}
             />
         </TouchableOpacity>
     );
